@@ -1,0 +1,316 @@
+#include <array>
+#include <sstream>    // for std::stringstream
+#include <string>
+#include <utility>    // for std::pair
+
+#include "catch.hpp"
+
+class board
+{
+    // position of the queen in the ith i
+    std::array<int, 8> positions;
+    // no queen lies in jth j
+    std::array<bool, 8> no_queen_in_j;
+    // no queen occupies the up diagonal
+    std::array<bool, 15> no_queen_in_up_diagonal;   
+    // no queen occupies the down diagonal
+    std::array<bool, 15> no_queen_in_down_diagonal; 
+    //counter initialization
+    int counter;
+    
+    bool valid_position(int i, int j) const;
+
+public:
+    board();
+
+    bool try_next_step(int queen, int nth_solution);
+
+    void place_queen(int i, int j);
+    void remove_queen(int i, int j);
+
+    std::array<int, 8> const& get_result() const;
+};
+
+board::board()
+{
+     // Initialize positions to -1
+        std::fill(positions.begin(), positions.end(), -1);
+        
+        // Initialize boolean arrays to true
+        std::fill(no_queen_in_j.begin(), no_queen_in_j.end(), true);
+        std::fill(no_queen_in_up_diagonal.begin(), no_queen_in_up_diagonal.end(), true);
+        std::fill(no_queen_in_down_diagonal.begin(), no_queen_in_down_diagonal.end(), true);
+        counter = 0;
+}
+// i = column and j = row
+void board::place_queen(int i, int j)
+{
+    positions[i] = j;
+    no_queen_in_j[j] = false;
+    no_queen_in_up_diagonal[i + j] = false;
+    no_queen_in_down_diagonal[(i - j) + 7] = false;
+}
+
+void board::remove_queen(int i, int j)
+{
+    no_queen_in_j[j] = true;
+    no_queen_in_up_diagonal[i + j] = true;
+    no_queen_in_down_diagonal[(i - j) + 7] = true;
+}
+
+bool board::valid_position(int i, int j) const
+{
+    return no_queen_in_j[j] && 
+    no_queen_in_up_diagonal[i + j] && 
+    no_queen_in_down_diagonal[(i - j) + 7];
+}
+
+// try next step in finding nth solution
+bool board::try_next_step(int i, int nth_solution)
+{
+    // Base case: If all queens are placed successfully
+    if (i == 8) {
+        // Increment the counter before checking
+        if (++counter == nth_solution) {
+            return true;
+        }
+
+    }
+
+    int j = 0;
+do {
+    if (valid_position(i, j)) {
+        // If the current position is valid, place the queen
+        place_queen(i, j);
+
+        // Recursively try placing queens in the next i
+        if (try_next_step(i + 1, nth_solution)) {
+            // Solution found, return true
+            return true;
+        }
+
+        // If placing the queen in the current position doesn't lead to a solution, backtrack
+        remove_queen(i, j);
+    }
+
+    ++j;
+} while (j < 8);
+
+// No valid position found in this i, return false
+return false;
+}
+
+
+STUDENT_TEST("verify try_next_step")
+{
+    board myBoard;
+    bool result = myBoard.try_next_step(0, 1);
+
+    bool expected = true; 
+
+    CHECK(result == expected);
+}
+
+// Returns an array of eight integers, each represents the is a
+// queen was placed in. 
+// This array already exists as a member of our board, expose it through
+// this. function
+std::array<int, 8> const& board::get_result() const
+{
+    return positions;
+}
+
+// Find nth solution for the Eight Queens problem
+std::pair<bool, std::array<int, 8>> eight_queens(int nth_solution = 1)
+{
+    board b;
+    bool found_solution = b.try_next_step(0, nth_solution);
+    return std::make_pair(found_solution, b.get_result());
+}
+
+// Print nth solution for the Eight Queens problem
+// helper functions for printing the board
+void print_separator_line(std::ostream& os)
+{
+     os << "+---+---+---+---+---+---+---+---+\n";
+}
+
+void print_queens_line(std::ostream& os, int position)
+{
+   {
+    std::string line = "|";
+    
+    for (int i = 0; i < 8; ++i) {
+        if (i == position) {
+            line += " * |"; // Place a queen in the specified column
+        } else {
+            line += "   |"; // Empty cell without a queen
+        }
+    }
+    
+    line += '\n'; // Add a newline character to the end of the line
+    
+    os << line; // Output the line to the ostream
+}
+}
+
+
+std::string print_eight_queens(std::array<int, 8> const& positions)
+{
+    std::stringstream strm;
+
+    strm << "\n";
+    print_separator_line(strm);
+
+    for (int queen = 0; queen < 8; ++queen)
+    {
+        print_queens_line(strm, positions[queen]);
+        print_separator_line(strm);
+    }
+
+    return strm.str();
+}
+
+// Verifying solutions
+PROVIDED_TEST("First two Eight Queens Solutions")
+{
+    {
+        auto [valid, result] = eight_queens();
+        CHECK(valid);
+        CHECK(result == std::array<int, 8>{0, 4, 7, 5, 2, 6, 1, 3});
+    }
+    {
+        auto [valid, result] = eight_queens(2);
+        CHECK(valid);
+        CHECK(result == std::array<int, 8>{0, 5, 7, 2, 6, 3, 1, 4});
+    }
+}
+
+STUDENT_TEST("More Eight Queens solutions")
+{
+    // Find and verify the 3rd solution
+    auto [valid3, result3] = eight_queens(3);
+    CHECK(valid3);
+    CHECK(result3 == std::array<int, 8>{0, 6, 3, 5, 7, 1, 4, 2});
+    
+    // Find and verify the 4th solution
+    auto [valid4, result4] = eight_queens(4);
+    CHECK(valid4);
+    CHECK(result4 == std::array<int, 8>{0, 6, 4, 7, 1, 3, 5, 2});
+
+    // Find and verify the 9th solution
+    auto [valid9, result9] = eight_queens(9);
+    CHECK(valid9);
+    CHECK(result9 == std::array<int, 8>{1, 5, 7, 2, 0, 3, 6, 4});
+
+    // Find and verify the 10th solution
+    auto [valid10, result10] = eight_queens(10);
+    CHECK(valid10);
+    CHECK(result10 == std::array<int, 8>{1, 6, 2, 5, 7, 4, 0, 3});
+}
+
+
+// Printing the board
+char const* first_eight_queens_solution = R"(
++---+---+---+---+---+---+---+---+
+| * |   |   |   |   |   |   |   |
++---+---+---+---+---+---+---+---+
+|   |   |   |   | * |   |   |   |
++---+---+---+---+---+---+---+---+
+|   |   |   |   |   |   |   | * |
++---+---+---+---+---+---+---+---+
+|   |   |   |   |   | * |   |   |
++---+---+---+---+---+---+---+---+
+|   |   | * |   |   |   |   |   |
++---+---+---+---+---+---+---+---+
+|   |   |   |   |   |   | * |   |
++---+---+---+---+---+---+---+---+
+|   | * |   |   |   |   |   |   |
++---+---+---+---+---+---+---+---+
+|   |   |   | * |   |   |   |   |
++---+---+---+---+---+---+---+---+
+)";
+
+PROVIDED_TEST("Print First Eight Queens Solution")
+{
+    auto [valid, result] = eight_queens();
+    CHECK(valid);
+    CHECK(print_eight_queens(result) == first_eight_queens_solution);
+}
+
+const char* expected_solution3 = R"(
++---+---+---+---+---+---+---+---+
+| * |   |   |   |   |   |   |   |
++---+---+---+---+---+---+---+---+
+|   |   |   |   |   |   | * |   |
++---+---+---+---+---+---+---+---+
+|   |   |   | * |   |   |   |   |
++---+---+---+---+---+---+---+---+
+|   |   |   |   |   | * |   |   |
++---+---+---+---+---+---+---+---+
+|   |   |   |   |   |   |   | * |
++---+---+---+---+---+---+---+---+
+|   | * |   |   |   |   |   |   |
++---+---+---+---+---+---+---+---+
+|   |   |   |   | * |   |   |   |
++---+---+---+---+---+---+---+---+
+|   |   | * |   |   |   |   |   |
++---+---+---+---+---+---+---+---+
+)";
+
+const char* expected_solution4 = R"(
++---+---+---+---+---+---+---+---+
+| * |   |   |   |   |   |   |   |
++---+---+---+---+---+---+---+---+
+|   |   |   |   |   |   | * |   |
++---+---+---+---+---+---+---+---+
+|   |   |   |   | * |   |   |   |
++---+---+---+---+---+---+---+---+
+|   |   |   |   |   |   |   | * |
++---+---+---+---+---+---+---+---+
+|   | * |   |   |   |   |   |   |
++---+---+---+---+---+---+---+---+
+|   |   |   | * |   |   |   |   |
++---+---+---+---+---+---+---+---+
+|   |   |   |   |   | * |   |   |
++---+---+---+---+---+---+---+---+
+|   |   | * |   |   |   |   |   |
++---+---+---+---+---+---+---+---+
+)";
+
+STUDENT_TEST("Printing more Eight Queens solutions")
+{
+    // Check the 3rd solution
+    auto [valid3, result3] = eight_queens(3);
+    CHECK(valid3);
+    
+    CHECK(print_eight_queens(result3) == expected_solution3);
+
+    // Check the 4th solution
+    auto [valid4, result4] = eight_queens(4);
+    CHECK(valid4);
+   
+    CHECK(print_eight_queens(result4) == expected_solution4);
+}
+
+
+int find_all_solutions()
+{
+    int nth_solution = 1;
+    do {
+        auto [valid, result] = eight_queens(nth_solution);
+        if (!valid)
+            break;
+
+        ++nth_solution;
+    }
+    while (true);
+    return nth_solution - 1;    // return number of found solutions
+}
+
+STUDENT_TEST("Verify number of found Eight Queens solutions")
+{
+    int found_solutions = find_all_solutions();
+    const int expected_solutions = 92;
+    CHECK(found_solutions == expected_solutions);
+}
